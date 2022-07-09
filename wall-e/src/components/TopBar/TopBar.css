@@ -1,0 +1,16 @@
+.active{
+    color:#F7B556;
+    padding-bottom: 0.25rem;
+    border-bottom: 4px solid #F7B556;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 700;
+}
+
+
+.normal{
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 700;
+    color:#686B6F;
+    font-size: 26px;
+
+}
