@@ -2,7 +2,7 @@ import TopBar from "../components/TopBar";
 import { Box, Center, VStack, HStack, Text, FormControl, Select, Input } from "@chakra-ui/react";
 import { Formik, Field } from "formik";
 import { useState, useEffect } from "react";
-import { useCollectionV2 } from '../hooks/useCollectionV2';
+import { useCollection } from '../hooks/useCollection';
 // specific for UID of users
 //import { useAuthContext } from "../hooks/useAuthContext";
 
@@ -61,7 +61,7 @@ function Search() {
 
     // };
 
-    const { documents: listings } = useCollectionV2("listings");
+    const { documents: listings } = useCollection("listings");
 
     function getPostalCode(data){
         var results = data.results;
@@ -119,7 +119,7 @@ function Search() {
 
             var displayedListings = matchedListingsIndices.map((i) => listings[i])
 
-            console.log()
+            console.log(displayedListings)
 
 
 
