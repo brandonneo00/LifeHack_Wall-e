@@ -1,5 +1,5 @@
 ## Deployed Web Application:
-[link] lifehack-wall-e.vercel.app
+lifehack-wall-e.vercel.app
 
 ## Inspiration
 It is appalling to know that more than 50% of our food waste happens at the consumer and retail-and-distribution stage. Many of these food items are in fact edible and are thrown away for reasons such as them being ugly or due to the oversight of consumers not realizing that they are unable to finish the food products that they purchased on time. Furthermore, it is also common for many stall owners to be unable to finish selling their food products. Hence, many of these food items go to waste partially because there lacks a platform to connect those that have food items to donate and those who are in need of these food items. 
