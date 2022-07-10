@@ -64,7 +64,7 @@ function Main() {
                             lineHeight="1.3"
                             align="left"
                         >
-                            Our mission at Save Wast-e is to REDUCE food wastage and RESPOND to those in need by REDISTRIBUTING potential food waste from hawkers, store-owners and individuals to those who require it.
+                            Our mission at Save Wast-e is to reduce food wastage by targeting 2 main audience group, Food Stall Owners and Individuals with food that they either don't require and/or near expiry date. We offer a sharing/listing platform allowing them to create listings for these food/products and redistributing them to those who can better utilise/consume it.
                         </Text>
                         </GridItem>
 

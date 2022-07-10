@@ -2,6 +2,9 @@ import TopBar from "../components/TopBar";
 import { Box, Center, VStack, HStack, Text, FormControl, Select, Input } from "@chakra-ui/react";
 import { Formik, Field } from "formik";
 import { useState, useEffect } from "react";
+import { useCollectionV2 } from '../hooks/useCollectionV2';
+// specific for UID of users
+//import { useAuthContext } from "../hooks/useAuthContext";
 
 function Search() {
     const [category, setCategory] = useState("");
@@ -9,10 +12,13 @@ function Search() {
     const [streetName, setStreetName] = useState("");
     const [error, setError] = useState(null);
     const [twoDigit, setTwoDigit] = useState("");
+
+    const [postalCode, setPostalCode] = useState("Loading");
+    const [listingIndices, setListingIndices] = useState([0]);
+    //const { user } = useAuthContext();
     
 
     var specialChars = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
-
 
     function checkSearchInput(street, food){
         if (specialChars.test(street) || specialChars.test(food)) {
@@ -21,7 +27,7 @@ function Search() {
     }
 
 
-    const axios = require('axios').default;
+    //const axios = require('axios').default;
     // async function fetchData() {
     //     const { data } = await axios.post(
     //       'http://127.0.0.1:8000/api/posts/',
@@ -35,25 +41,38 @@ function Search() {
     //   }, [])
         
 
-    function PostalCodeAPI(props) {
-        // const oneMapAPI = "https://developers.onemap.sg/commonapi/search?searchVal=" +
-        //     props.street.toLowerCase() +
-        //     "&returnGeom=N&getAddrDetails=Y&pageNum=1";
-        const oneMapAPI = "https://developers.onemap.sg/commonapi/search?searchVal=revenue&returnGeom=Y&getAddrDetails=Y&pageNum=1";
-            //console.log(oneMapAPI + "onemapapi")
-            const [postalCode, setPostalCode] = useState("Loading");
+    // function PostalCodeAPI(props) {
+    //     // const oneMapAPI = "https://developers.onemap.sg/commonapi/search?searchVal=" +
+    //     //     props.street.toLowerCase() +
+    //     //     "&returnGeom=N&getAddrDetails=Y&pageNum=1";
+    //     const oneMapAPI = "https://developers.onemap.sg/commonapi/search?searchVal=revenue&returnGeom=Y&getAddrDetails=Y&pageNum=1";
+    //         //console.log(oneMapAPI + "onemapapi")
+    //         const [postalCode, setPostalCode] = useState("Loading");
         
-            fetch(oneMapAPI)
-                .then((response) => response.json())
-                .then((data) => setPostalCode(data.results[0].POSTAL))
-                .catch((error) =>
-                    setPostalCode(`Unable to retrieve Postal Code: ${error}`)
-                );
+    //         fetch(oneMapAPI)
+    //             .then((response) => response.json())
+    //             .then((data) => setPostalCode(data.results[0].POSTAL))
+    //             .catch((error) =>
+    //                 setPostalCode(`Unable to retrieve Postal Code: ${error}`)
+    //             );
 
-        console.log("this is my postal code " + postalCode)
-        return postalCode;
+    //     console.log("this is my postal code " + postalCode)
+    //     return postalCode;
 
-    };
+    // };
+
+    const { documents: listings } = useCollectionV2("listings");
+
+    function getPostalCode(data){
+        var results = data.results;
+        var postalCodes = results.map((e) => e.POSTAL).filter((e) => e !== "NIL")
+        return postalCodes[0]
+    }
+
+    //Function that gets results by matching first 2 digits of postal code
+    function getResults(postalCodes){
+
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -64,8 +83,43 @@ function Search() {
             checkSearchInput(streetName, foodName);
             //query the oneMAPs API using user's input
             console.log("before set2")
-            console.log(PostalCodeAPI(streetName) + "this is the one MAP aPI");
+            //console.log(PostalCodeAPI(streetName) + "this is the one MAP aPI");
+
+            const oneMapAPI = "https://developers.onemap.sg/commonapi/search?searchVal=" +
+            streetName.toLowerCase() +
+              "&returnGeom=N&getAddrDetails=Y&pageNum=1";
+            //console.log(oneMapAPI + "onemapapi")
+            
+        
+            fetch(oneMapAPI)
+                .then((response) => response.json())
+                .then((data) => setPostalCode(getPostalCode(data)))
+                .catch((error) =>
+                    setPostalCode(`Unable to retrieve Postal Code: ${error}`)
+                );
+
+            console.log("this is my postal code " + postalCode)
+            console.log(listings)
+        
+
             //setTwoDigit(PostalCodeAPI(streetName));
+            var matchedListingsIndices = [];
+            var listingPostalCode ="";
+            for(let i=0; i<listings.length; i++){
+                var listingPostalCode = listings[i].Location
+                console.log("bbb" + listingPostalCode)
+
+                if(listingPostalCode.substr(0,1) === postalCode.substr(0,1)){
+                    matchedListingsIndices.push(i)
+                    console.log("bbb" + matchedListingsIndices)
+                }
+                console.log(matchedListingsIndices);
+            }
+            setListingIndices(matchedListingsIndices);
+
+            var displayedListings = matchedListingsIndices.map((i) => listings[i])
+
+            console.log()
 
 
 
@@ -79,7 +133,7 @@ function Search() {
     return (
         <div>
             <TopBar />
-            <PostalCodeAPI street={streetName}></PostalCodeAPI>
+            {/* <PostalCodeAPI street={streetName}></PostalCodeAPI> */}
             <Formik>
                 <form>
                     <FormControl isRequired>

@@ -26,12 +26,35 @@ import {
   Image,
 } from '@chakra-ui/react';
 import React from 'react';
+import { useState } from 'react';
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  listAll,
+} from 'firebase/storage';
 
 function Homepage() {
   const { user } = useAuthContext();
+  const [tempurl, setTempURL] = useState('');
 
   const { documents: listings } = useCollectionV2('listings');
 
+  const theURL = filename => {
+    const storage = getStorage();
+
+    // Create a reference under which you want to list
+    const listRef = ref(storage, user.uid + '/' + filename);
+
+    getDownloadURL(listRef).then(url => {
+      setTempURL(url);
+      console.log(url + 'link');
+    });
+
+    console.log('this is tempurl ' + tempurl);
+    return tempurl;
+  };
 
   return (
     <div>
@@ -49,7 +72,7 @@ function Homepage() {
               >
                 <VStack spacing="0">
                   <Box width="25vw">
-                    <Image src={x.Image} />
+                    <Image src={theURL(x.Image)} />
                   </Box>
                   <Text
                     fontSize="1.2vw"

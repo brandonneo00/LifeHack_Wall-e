@@ -41,10 +41,15 @@ import {
   updateDoc,
   setDoc,
   getDoc,
-  deleteDoc
+  deleteDoc,
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes} from "firebase/storage";
-
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  listAll,
+} from 'firebase/storage';
 
 function Listings() {
   const { user } = useAuthContext();
@@ -52,11 +57,13 @@ function Listings() {
   const [foodName, setfoodName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [description, setDescription] = useState('');
-  const [image, setImage] = useState('');
+  const [image, setImage] = useState(null);
+  const [tempurl, setTempURL] = useState('');
 
   const [error, setError] = useState(null);
   const [PATH, setPATH] = useState('personal/' + user.uid + '/compiled');
 
+  const storage = getStorage();
 
   //   const checkError = (answerInput, acadYear) => {
   //     if (answerInput.includes(" ")) {
@@ -75,39 +82,49 @@ function Listings() {
   //     }
   //   };
 
-  const handleRedeemed = async (id) => {
-    const docRef = doc(db, "listings", id);
+  const handleRedeemed = async id => {
+    const docRef = doc(db, 'listings', id);
     await deleteDoc(docRef);
 
-    const secondDocRef = doc(db, "personal", user.uid, "compiled", id);
-    setDoc(secondDocRef, {
+    const secondDocRef = doc(db, 'personal', user.uid, 'compiled', id);
+    setDoc(
+      secondDocRef,
+      {
         Redeem: true,
-      }, { merge: true });
+      },
+      { merge: true }
+    );
+  };
 
-  }
-
-  const handleDelete = async (id) => {
+  const handleDelete = async id => {
     console.log(id);
 
     // first argument is the database that we want to connect to
     // second argument is the specific collection
     // third arugment is the id of the document we want to reference to
 
-    const docRef = doc(db, "listings", id);
+    const docRef = doc(db, 'listings', id);
     await deleteDoc(docRef);
 
-    const secondDocRef = doc(db, "personal", user.uid, "compiled", id);
+    const secondDocRef = doc(db, 'personal', user.uid, 'compiled', id);
     await deleteDoc(secondDocRef);
+  };
+
+  const uploadFile = () => {
+    if (image !== null) {
+      const imageRef = ref(storage, user.uid + '/' + image.name);
+      uploadBytes(imageRef, image).then(() => {
+        console.log('Image uploaded');
+      });
+    }
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
     setError(null);
     var today = new Date();
-    var DateTime = today.to
 
     console.log(today);
-
 
     try {
       //   checkError(answer, academicyear);
@@ -133,10 +150,10 @@ function Listings() {
         FoodName: foodName.toUpperCase(),
         Quantity: quantity,
         Description: description.toUpperCase(),
-        Image: image,
         Location: tempAddress,
         uid: user.uid,
-        TimeStamp: today.toString()
+        Image: image.name,
+        TimeStamp: today.toString(),
       });
 
       console.log(listingDoc.id + ' This is listing id in listings collection');
@@ -149,41 +166,55 @@ function Listings() {
         FoodName: foodName.toUpperCase(),
         Quantity: quantity,
         Description: description.toUpperCase(),
-        Image: image,
         Location: tempAddress,
         uid: user.uid,
+        Image: image.name,
         TimeStamp: today.toString(),
         Redeem: false,
       });
 
       setPATH('personal/' + user.uid + '/compiled');
-    
+
+      // if (image !== null) {
+      //   const imageRef = ref(storage, user.uid + "/" + image.name);
+      //   uploadBytes(imageRef, image).then(() => {
+      //     console.log("Image uploaded")
+      //   });
+      // }
+
       setCategory('');
       setfoodName('');
       setQuantity('');
       setDescription('');
-      setImage('');
+      setImage(null);
     } catch (e) {
       setError(e);
       console.error(e);
     }
   };
 
-  const { documents: listings } = useCollection("listings", [
-      "uid",
-      "==",
-      user.uid,
+  const { documents: listings } = useCollection('listings', [
+    'uid',
+    '==',
+    user.uid,
   ]);
 
-  const { documents: personal } = useCollection(
-      PATH, [
-      "uid",
-      "==",
-      user.uid
-  ]
-  );
+  const { documents: personal } = useCollection(PATH, ['uid', '==', user.uid]);
 
+  const theURL = filename => {
+    const storage = getStorage();
 
+    // Create a reference under which you want to list
+    const listRef = ref(storage, user.uid + '/' + filename);
+
+    getDownloadURL(listRef).then(url => {
+      setTempURL(url);
+      console.log(url + 'link');
+    });
+
+    console.log('this is tempurl ' + tempurl);
+    return tempurl;
+  };
 
   return (
     <div>
@@ -324,8 +355,9 @@ function Listings() {
                       type="file"
                       id="myFile"
                       name="filename"
-                      onChange={e => setImage(e.target.value)}
-                      value={image}
+                      onChange={e => {
+                        setImage(e.target.files[0]);
+                      }}
                     />
                   </FormControl>
                 </HStack>
@@ -364,6 +396,7 @@ function Listings() {
                         '0 0 1px 2px rgba(88, 144, 255, .75), 0 1px 1px rgba(0, 0, 0, .15)',
                     }}
                     as="button"
+                    onClick={uploadFile}
                   >
                     Create Listing
                   </Box>
@@ -381,215 +414,225 @@ function Listings() {
         />
         <Box overflowY="scroll" height="50vw" maxHeight="60vw">
           <Center>
-          <VStack>
-          {personal && (personal.map((x, index) => (
-            <HStack align="flex" spacing="5vw" padding="3% 3% 3% 1%" key={index}>
-              <Box borderRadius="15px" bg="#FAEDCD" padding="2% 12%" textAlign="center">
-                <VStack spacing="0">
-                  <Box width="25vw">
-                    <Image src={x.Image} />
-                  </Box>
-                  <Text
-                    fontSize="1.2vw"
-                    fontWeight="bold"
-                    color="black"
-                    lineHeight="2"
-                    align="left"
-                    width="25vw"
+            <VStack>
+              {personal &&
+                personal.map((x, index) => (
+                  <HStack
+                    align="flex"
+                    spacing="5vw"
+                    padding="3% 3% 3% 1%"
+                    key={index}
                   >
-                    Category
-                  </Text>
+                    <Box
+                      borderRadius="15px"
+                      bg="#FAEDCD"
+                      padding="5% 10%"
+                      textAlign="center"
+                    >
+                      <VStack spacing="0">
+                        <Box width="25vw">
+                          <Image src={theURL(x.Image)} />
+                        </Box>
+                        <Text
+                          fontSize="1.2vw"
+                          fontWeight="bold"
+                          color="black"
+                          lineHeight="2"
+                          align="left"
+                          width="25vw"
+                        >
+                          Category
+                        </Text>
 
-                  <Text
-                    fontSize="1vw"
-                    fontWeight="regular"
-                    color="black"
-                    lineHeight="1.5"
-                    align="left"
-                    width="25vw"
-                  >
-                    {x.Category}
-                  </Text>
+                        <Text
+                          fontSize="1vw"
+                          fontWeight="regular"
+                          color="black"
+                          lineHeight="1.5"
+                          align="left"
+                          width="25vw"
+                        >
+                          {x.Category}
+                        </Text>
 
-                  <Text
-                    fontSize="1.2vw"
-                    fontWeight="bold"
-                    color="black"
-                    lineHeight="2"
-                    align="left"
-                    width="25vw"
-                  >
-                    Food/Product Name
-                  </Text>
+                        <Text
+                          fontSize="1.2vw"
+                          fontWeight="bold"
+                          color="black"
+                          lineHeight="2"
+                          align="left"
+                          width="25vw"
+                        >
+                          Food/Product Name
+                        </Text>
 
-                  <Text
-                    fontSize="1vw"
-                    fontWeight="regular"
-                    color="black"
-                    lineHeight="1.5"
-                    align="left"
-                    width="25vw"
-                  >
-                    {x.FoodName}
-                  </Text>
+                        <Text
+                          fontSize="1vw"
+                          fontWeight="regular"
+                          color="black"
+                          lineHeight="1.5"
+                          align="left"
+                          width="25vw"
+                        >
+                          {x.FoodName}
+                        </Text>
 
-                  <Text
-                    fontSize="1.2vw"
-                    fontWeight="bold"
-                    color="black"
-                    lineHeight="2"
-                    align="left"
-                    width="25vw"
-                  >
-                    Quantity
-                  </Text>
+                        <Text
+                          fontSize="1.2vw"
+                          fontWeight="bold"
+                          color="black"
+                          lineHeight="2"
+                          align="left"
+                          width="25vw"
+                        >
+                          Quantity
+                        </Text>
 
-                  <Text
-                    fontSize="1vw"
-                    fontWeight="regular"
-                    color="black"
-                    lineHeight="1.5"
-                    align="left"
-                    width="25vw"
-                  >
-                    {x.Quantity}
-                  </Text>
+                        <Text
+                          fontSize="1vw"
+                          fontWeight="regular"
+                          color="black"
+                          lineHeight="1.5"
+                          align="left"
+                          width="25vw"
+                        >
+                          {x.Quantity}
+                        </Text>
 
-                  <Text
-                    fontSize="1.2vw"
-                    fontWeight="bold"
-                    color="black"
-                    lineHeight="2"
-                    align="left"
-                    width="25vw"
-                  >
-                    Description
-                  </Text>
+                        <Text
+                          fontSize="1.2vw"
+                          fontWeight="bold"
+                          color="black"
+                          lineHeight="2"
+                          align="left"
+                          width="25vw"
+                        >
+                          Description
+                        </Text>
 
-                  <Text
-                    fontSize="1vw"
-                    fontWeight="regular"
-                    color="black"
-                    lineHeight="1.5"
-                    align="left"
-                    width="25vw"
-                  >
-                    {x.Description}
-                  </Text>
+                        <Text
+                          fontSize="1vw"
+                          fontWeight="regular"
+                          color="black"
+                          lineHeight="1.5"
+                          align="left"
+                          width="25vw"
+                        >
+                          {x.Description}
+                        </Text>
 
-                  <Text
-                    fontSize="1.2vw"
-                    fontWeight="bold"
-                    color="black"
-                    lineHeight="2"
-                    align="left"
-                    width="25vw"
-                  >
-                    Location
-                  </Text>
+                        <Text
+                          fontSize="1.2vw"
+                          fontWeight="bold"
+                          color="black"
+                          lineHeight="2"
+                          align="left"
+                          width="25vw"
+                        >
+                          Location
+                        </Text>
 
-                  <Text
-                    fontSize="1vw"
-                    fontWeight="regular"
-                    color="black"
-                    lineHeight="1.5"
-                    align="left"
-                    width="25vw"
-                  >
-                    {x.Location}
-                  </Text>
+                        <Text
+                          fontSize="1vw"
+                          fontWeight="regular"
+                          color="black"
+                          lineHeight="1.5"
+                          align="left"
+                          width="25vw"
+                        >
+                          {x.Location}
+                        </Text>
 
-                  <Text
-                    fontSize="1vw"
-                    fontWeight="regular"
-                    color="grey"
-                    lineHeight="1.5"
-                    align="left"
-                    width="25vw"
-                  >
-                    Posted on {x.TimeStamp}
-                  </Text>
+                        <Text
+                          fontSize="1vw"
+                          fontWeight="regular"
+                          color="grey"
+                          lineHeight="1.5"
+                          align="left"
+                          width="25vw"
+                        >
+                          Posted on {x.TimeStamp}
+                        </Text>
 
-                  {x.Redeem && (
-                    <>
-                    <Text
-                    fontSize="1.2vw"
-                    fontWeight="bold"
-                    color="#92CF7D"
-                    lineHeight="2"
-                    align="left"
-                    width="25vw"
-                  >
-                    Fully Redeemed!!!
-                  </Text>
-                  </>
-                  )}
-                </VStack>
-              </Box>
-            <Center>
-              <VStack spacing="3vw">
-                <Button
-                  height="4vw"
-                  lineHeight="1.2"
-                  transition="all 0.2s cubic-bezier(.08,.52,.52,1)"
-                  border="0px"
-                  width="15vw"
-                  borderRadius="15px"
-                  fontSize="1.5vw"
-                  fontWeight="semibold"
-                  bg="#92CF7D"
-                  borderColor=""
-                  color="#000000"
-                  _hover={{ bg: '#669556' }}
-                  _active={{
-                    bg: '#92CF7D',
-                    transform: 'scale(0.98)',
-                    borderColor: '',
-                  }}
-                  _focus={{
-                    boxShadow:
-                      '0 0 1px 2px rgba(88, 144, 255, .75), 0 1px 1px rgba(0, 0, 0, .15)',
-                  }}
-                  as="button"
-                  onClick={() => handleRedeemed(x.id)}
-                  isDisabled={x.Redeem}
-                >
-                  Fully Redeemed
-                </Button>
+                        {x.Redeem && (
+                          <>
+                            <Text
+                              fontSize="1.2vw"
+                              fontWeight="bold"
+                              color="#92CF7D"
+                              lineHeight="2"
+                              align="left"
+                              width="25vw"
+                            >
+                              Fully Redeemed!!!
+                            </Text>
+                          </>
+                        )}
+                      </VStack>
+                    </Box>
+                    <Center>
+                      <VStack spacing="3vw">
+                        <Button
+                          height="4vw"
+                          lineHeight="1.2"
+                          transition="all 0.2s cubic-bezier(.08,.52,.52,1)"
+                          border="0px"
+                          width="15vw"
+                          borderRadius="15px"
+                          fontSize="1.5vw"
+                          fontWeight="semibold"
+                          bg="#92CF7D"
+                          borderColor=""
+                          color="#000000"
+                          _hover={{ bg: '#669556' }}
+                          _active={{
+                            bg: '#92CF7D',
+                            transform: 'scale(0.98)',
+                            borderColor: '',
+                          }}
+                          _focus={{
+                            boxShadow:
+                              '0 0 1px 2px rgba(88, 144, 255, .75), 0 1px 1px rgba(0, 0, 0, .15)',
+                          }}
+                          as="button"
+                          onClick={() => handleRedeemed(x.id)}
+                          isDisabled={x.Redeem}
+                        >
+                          Fully Redeemed
+                        </Button>
 
-                <Box
-                  height="4vw"
-                  lineHeight="1.2"
-                  transition="all 0.2s cubic-bezier(.08,.52,.52,1)"
-                  border="0px"
-                  width="15vw"
-                  borderRadius="15px"
-                  fontSize="1.5vw"
-                  fontWeight="semibold"
-                  bg="red"
-                  borderColor=""
-                  color="#000000"
-                  _hover={{ bg: '#CE1F14' }}
-                  _active={{
-                    bg: 'red',
-                    transform: 'scale(0.98)',
-                    borderColor: '',
-                  }}
-                  _focus={{
-                    boxShadow:
-                      '0 0 1px 2px rgba(88, 144, 255, .75), 0 1px 1px rgba(0, 0, 0, .15)',
-                  }}
-                  as="button"
-                  onClick={() => handleDelete(x.id)}
-                >
-                  Delete
-                </Box>
-              </VStack>
-              </Center>
-            </HStack>
-          ))
-          )}
-           </VStack>
+                        <Box
+                          height="4vw"
+                          lineHeight="1.2"
+                          transition="all 0.2s cubic-bezier(.08,.52,.52,1)"
+                          border="0px"
+                          width="15vw"
+                          borderRadius="15px"
+                          fontSize="1.5vw"
+                          fontWeight="semibold"
+                          bg="red"
+                          borderColor=""
+                          color="#000000"
+                          _hover={{ bg: '#CE1F14' }}
+                          _active={{
+                            bg: 'red',
+                            transform: 'scale(0.98)',
+                            borderColor: '',
+                          }}
+                          _focus={{
+                            boxShadow:
+                              '0 0 1px 2px rgba(88, 144, 255, .75), 0 1px 1px rgba(0, 0, 0, .15)',
+                          }}
+                          as="button"
+                          onClick={() => handleDelete(x.id)}
+                        >
+                          Delete
+                        </Box>
+                      </VStack>
+                    </Center>
+                  </HStack>
+                ))}
+            </VStack>
           </Center>
         </Box>
       </Box>
